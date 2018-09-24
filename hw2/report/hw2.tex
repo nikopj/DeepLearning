@@ -1,3 +1,36 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage[margin=1in]{geometry}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\author{Nikola Janju\v{s}evi\'{c}}
+\title{ECE471, Selected Topics in Machine Learning \\ Assignment 2}
+\date{September 11, 2018}
+
+\begin{document}
+\begin{large}
+ECE471, Selected Topics in Machine Learning -- Assignment 2
+\end{large} \\
+Nikola Janju\v{s}evi\'{c} \\
+September 11th 2018 
+
+\subsubsection*{Remarks}
+This assignment called for binary classification of "spiral data". This data is generated in the code below and represented by as blue and red dots in Figure 1. A multi-layer perceptron (MLP) was trained by this data to produce a conditional pdf determining the probability that a point is in class t=1 (the red dots). It takes in 2D Cartesian coordinates and outputs logits. The following remarks were noted during this process:
+\begin{itemize}
+\item smaller batch sizes can give faster convergence
+\item relu6 achieves much better results as an activation function than the sigmoid.
+\item using 2 MLP layers gave noticeably better performance over 3 layers
+\item keeping the output layer as a linear combination yielded better results
+\item a batch size greater than the number of parameters in the first layer yeilds better results
+\end{itemize}
+Initially, it took \verb|50,000| batches to achieve usable results and have a (personal) proof of concept of the MLP. The remarks above are a result of tuning that initial design. Specific to this machine learning problem, it was found that the MLP could produce decent results with \verb|1000| batches, but this often left some undesired miss-classification in the spiral paths. 
+\begin{verbatim}
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -116,3 +149,12 @@ with tf.Session() as sess:
     cb.set_label("p(t=1 | x)", rotation=0)
     plt.title("multilayer perceptron generated pdf \nwith training data")
     plt.show()
+\end{verbatim}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{Figure_1.pdf}
+\caption{Conditional PDF of the MLP (color-gradient) superimposed with the training data}
+\end{figure}
+
+\end{document}

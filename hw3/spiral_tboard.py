@@ -11,7 +11,7 @@ dim_in = 2
 dim_layer1 = M
 dim_layer2 = M
 BATCH_SIZE = 2*M
-NUM_BATCHES = 5000
+NUM_EPOCHS = 200
 
 class Data(object):
     def __init__(self):
@@ -83,10 +83,12 @@ with tf.Session() as sess:
     sess.run(init)
     # training
     avg_cost = 0.;
-    for _ in tqdm(range(0, NUM_BATCHES)):
-        x_np, y_np = data.get_batch()
-        loss_np, _ = sess.run([loss, optim], feed_dict={x: x_np, y: y_np})
-        avg_cost  += loss_np/NUM_BATCHES
+    num_batches = int(600/BATCH_SIZE)
+    for _ in tqdm(range(0, NUM_EPOCHS)):
+        for i in range(num_batches):
+            x_np, y_np = data.get_batch()
+            loss_np, _ = sess.run([loss, optim], feed_dict={x: x_np, y: y_np})
+            avg_cost  += loss_np/num_batches
     print("cost={:.9f}".format(avg_cost))
 
     # prediciton
