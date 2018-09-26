@@ -7,21 +7,20 @@ from numpy.random import *
 
 # intermediate dimensional number
 M = 32
-dim_layer1 = M
-dim_layer2 = 2*M
-dim_layer3 = M
+dim_layer1 = 2*M
+dim_layer2 = M
+dim_layer3 = int(.5*M)
 num_classes = 10
-BATCH_SIZE = 2000
-NUM_EPOCHS = 10
+BATCH_SIZE = 5000
+NUM_EPOCHS = 5
 
-k1 = 4
+k1 = 5
 pool1 = 2
 stride1 = 1
-k2 = 6
+k2 = 3
 pool2 = 2
-stride2 = 2
+stride2 = 1
 display_epoch = 1
-dropout = 1
 
 # https://stackoverflow.com/questions/38592324/one-hot-encoding-using-numpy/38592416
 def get_one_hot(targets, nb_classes):
@@ -48,7 +47,7 @@ class Data(object):
         choices = choice(self.index_train, size=BATCH_SIZE)
         return self.x_train[choices,:,:,:], self.y_train[choices,:]
 
-def conv_layer(input, W, b, stride=1, pool=2):
+def conv_layer(input, W, b, stride, pool):
     x = tf.nn.conv2d(input, W, strides=[1, stride, stride, 1], padding="VALID")
     x = tf.add(x,b)
     x = tf.nn.relu6(x)
@@ -65,21 +64,24 @@ def f(x):
     # conv-> +bias -> activation -> pool
     layer_1 = conv_layer(x, weights['w1'], biases['b1'], stride=stride1, pool=pool1)
     layer_2 = conv_layer(layer_1, weights['w2'], biases['b2'], stride=stride2, pool=pool2)
-    layer_3 = tf.nn.dropout(
-        fc_layer(layer_2, weights['w3'], biases['b3']), dropout
-    )
+    layer_3 = fc_layer(layer_2, weights['w3'], biases['b3'])
     return tf.squeeze(
         tf.add( tf.matmul(layer_3, weights['out']), biases['out'] )
     )
 
 # Store layers weight & bias
 # default dtype=float32
-d1 = int( np.ceil(float(28 - k1 + 1) / float(stride1) ) / float(pool1) )
-d2 = int( np.ceil(float(d1 - k2 + 1) / float(stride2) ) / float(pool2) )
+d1 = int( np.ceil(float(28 - k1 + 1) / float(stride1) ) )
+dp1 = int( np.ceil(float(d1 - pool1 + 1) / float(stride1) ) )
+
+d2 = int( np.ceil(float(dp1 - k2 + 1) / float(stride2) ) )
+dp2 = int( np.ceil(float(d2 - pool2 + 1) / float(stride2) ) )
+# d1 = int( np.ceil(float(28) / float(stride1) ) / float(pool1) )
+# d2 = int( np.ceil(float(28) / float(stride2) ) / float(pool2) )
 weights = {
     'w1': tf.Variable(tf.random_normal([k1,k1,1,dim_layer1])), # kernel
-    'w2': tf.Variable(tf.random_normal([k2,k2,dim_layer1,dim_layer2] )),
-    'w3': tf.Variable(tf.random_normal([d2*d2*dim_layer2, dim_layer3] )),
+    'w2': tf.Variable(tf.random_normal([k2,k2,dim_layer1,dim_layer2])), # kernel
+    'w3': tf.Variable(tf.random_normal([dp2*dp2*dim_layer2, dim_layer3] )),
     'out': tf.Variable(tf.random_normal([dim_layer3, num_classes]))
 }
 biases = {
@@ -105,7 +107,7 @@ loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) # + \
     #     [tf.nn.l2_loss(var) for var in
     #     tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
     # )
-optim = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+optim = tf.train.AdamOptimizer(learning_rate=0.01).minimize(loss)
 init = tf.global_variables_initializer()
 
 
