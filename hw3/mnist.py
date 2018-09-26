@@ -18,11 +18,6 @@ k1 = 5
 pool1 = 2
 k_stride1 = 2
 p_stride1 = 2
-k2 = 5
-pool2 = 2
-k_stride2 = 1
-p_stride2 = 2
-display_epoch = 1
 
 l2_lambda = .01/(k1*k1*dim_layer1 + dim_layer2)
 drop_out = .9
@@ -52,6 +47,7 @@ class Data(object):
         choices = choice(self.index_train, size=BATCH_SIZE)
         return self.x_train[choices,:,:,:], self.y_train[choices,:]
 
+# convolution layer: conv-> +bias -> activation -> pool
 def conv_layer(input, W, b, k_stride=1, pool=2, p_stride=2):
     x = tf.nn.conv2d(input, W, strides=[1, k_stride, k_stride, 1], padding="VALID")
     x = tf.add(x,b)
@@ -59,18 +55,17 @@ def conv_layer(input, W, b, k_stride=1, pool=2, p_stride=2):
     return tf.nn.avg_pool(x, ksize = [1, pool, pool, 1],
         strides = [1, p_stride, p_stride, 1], padding="VALID")
 
+# fully connected layer
 def fc_layer(input, W, b):
     x = tf.add( tf.matmul( tf.reshape(input, [-1, tf.shape(W)[0]]), W ), b)
     return tf.nn.relu6(x)
 
 x = tf.placeholder(tf.float32, [None,28,28,1])
 y = tf.placeholder(tf.float32, [None,10])
-keep_prob = tf.placeholder(tf.float32)
+keep_prob = tf.placeholder(tf.float32) # for dropout
 
 # f:R28x28 -> R10
 def f(x):
-    # convolution layer
-    # conv-> +bias -> activation -> pool
     layer_1 = tf.nn.dropout( conv_layer(x, weights['w1'], biases['b1'],
         k_stride=k_stride1, pool=pool1, p_stride=p_stride1), keep_prob )
     layer_2 = tf.nn.dropout( fc_layer(layer_1, weights['w2'], biases['b2']), keep_prob)
@@ -111,7 +106,6 @@ loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) + \
     )
 optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 init = tf.global_variables_initializer()
-
 
 with tf.Session() as sess:
     data = Data()
