@@ -11,27 +11,37 @@ logs_path = "./tf_logs/"
 input_size = 32 # 32x32 imgs
 num_channels = 3 # RGB
 num_classes = 10
-dim_layer = {1:16, 2:32, 3:10}
+dim_layer = {1:32, 2:64, 3:64, 4:num_classes}
 cp = { # conv parameters
-    'k':5, # conv window size (kxk)
-    'p':2, # pool window size (pxp)
-    'ks':2, # conv stride
-    'ps':2 # pool stride
+    1:{
+        'k':5, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':2, # conv stride
+        'ps':2 # pool stride
+    },
+    2:{
+        'k':5, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':2, # conv stride
+        'ps':2 # pool stride
+    }
 }
 def dim(dim, cp):
     c = int( np.ceil(float(dim - cp['k'] + 1) / float(cp['ks']) ) )
     return int( np.ceil(float(c - cp['p'] + 1) / float(cp['ps']) ) )
-d = dim(input_size,cp)
 
-NUM_BATCHES = 200
-BATCH_SIZE = 500
+d1 = dim(input_size,cp[1])
+d2 = dim(d1,cp[2])
+
+NUM_BATCHES = 300
+BATCH_SIZE = 300
 NUM_EPOCHS = 8 # not technically using epochs but im keeping it.
-learning_rate = 0.01
+learning_rate = 0.1
 display_epoch = 1
 
 # regularization parameters
-l2_lambda = .01/( d*d*dim_layer[1] + dim_layer[1]*dim_layer[2] )
-drop_out = 1
+l2_lambda = .01/( d1*d1*dim_layer[1] + d2*d2*dim_layer[2] + dim_layer[2]*dim_layer[3] )
+drop_out = .9
 
 def main():
     class Data(object):
@@ -53,24 +63,27 @@ def main():
 
     # f:R28x28 -> R10
     def f(x):
-        layer_1 = tf.nn.dropout( conv_layer(x, W[1], b[1], cp), keep_prob )
-        layer_2 = tf.nn.dropout( fc_layer(layer_1, W[2], b[2]), keep_prob )
+        layer_1 = tf.nn.dropout( conv_layer(x, W[1], b[1], cp[1]), keep_prob )
+        layer_2 = tf.nn.dropout( conv_layer(layer_1, W[2], b[2], cp[2]), keep_prob )
+        layer_3 = tf.nn.dropout( fc_layer(layer_2, W[3], b[3]), keep_prob )
         return tf.squeeze(
-            tf.add( tf.matmul(layer_2, W['out']), b['out'] )
+            tf.add( tf.matmul(layer_3, W['out']), b['out'] )
         )
 
     # Store layers weight & bias
     # default dtype=float32
     # WEIGHTS
     W = {
-        1: tf.Variable(tf.random_normal( [cp['k'],cp['k'], num_channels, dim_layer[1]] )),
-        2: tf.Variable(tf.random_normal( [d*d*dim_layer[1], dim_layer[2]] )),
-        'out': tf.Variable(tf.random_normal( [dim_layer[2], num_classes] ))
+        1: tf.Variable(tf.random_normal( [cp[1]['k'],cp[1]['k'], num_channels, dim_layer[1]] )),
+        2: tf.Variable(tf.random_normal( [cp[2]['k'],cp[2]['k'], dim_layer[1], dim_layer[2]] )),
+        3: tf.Variable(tf.random_normal( [d2*d2*dim_layer[2], dim_layer[3]] )),
+        'out': tf.Variable(tf.random_normal( [dim_layer[3], num_classes] ))
     }
     # BIASES
     b = {
         1: tf.Variable(tf.random_normal([dim_layer[1]])),
         2: tf.Variable(tf.random_normal([dim_layer[2]])),
+        3: tf.Variable(tf.random_normal([dim_layer[3]])),
         'out': tf.Variable(tf.random_normal([num_classes]))
     }
 
