@@ -1,3 +1,27 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage[margin=1in]{geometry}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\author{Nikola Janju\v{s}evi\'{c}}
+\title{ECE471, Selected Topics in Machine Learning \\ Assignment 2}
+\date{September 11, 2018}
+
+\begin{document}
+\begin{large}
+ECE471, Selected Topics in Machine Learning -- Assignment 2 \\
+\end{large}
+Convolution Neural Net MNIST Classifier \\
+Nikola Janju\v{s}evi\'{c} \\
+September 11th 2018 
+ 
+\begin{verbatim}
 # Nikola Janjusevic
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -157,3 +181,12 @@ with tf.Session() as sess:
         accuracy.eval({x: data.x_test, y: data.y_test, keep_prob: 1.0}))
 
     print("Run the command line:\n--> tensorboard --logdir=./tf_logs ")
+\end{verbatim}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{Figure_1.pdf}
+\caption{CNN performance with the hyper parameters specified at the top of the program achieving. \%98.14 accuracy on the test set}
+\end{figure}
+
+\end{document}
