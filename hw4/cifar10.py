@@ -1,5 +1,4 @@
-import os
-import pickle
+from fcns import *
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
@@ -11,36 +10,74 @@ logs_path = "./tf_logs/"
 input_size = 32 # 32x32 imgs
 num_channels = 3 # RGB
 num_classes = 10
-dim_layer = {1:32, 2:64, 3:64, 4:num_classes}
+dim_layer = [num_channels, 32, 32, 32, 32, 32, 32, 64, 64, num_classes]
 cp = { # conv parameters
     1:{
         'k':5, # conv window size (kxk)
         'p':2, # pool window size (pxp)
         'ks':2, # conv stride
-        'ps':2 # pool stride
+        'ps':1, # pool stride,
+        'kpad':"SAME",
+        'ppad':"SAME"
     },
     2:{
-        'k':5, # conv window size (kxk)
+        'k':3, # conv window size (kxk)
         'p':2, # pool window size (pxp)
-        'ks':2, # conv stride
-        'ps':2 # pool stride
+        'ks':1, # conv stride
+        'ps':2, # pool stride,
+        'kpad':"SAME",
+        'ppad':"SAME"
+    },
+    3:{
+        'k':3, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':1, # conv stride
+        'ps':1, # pool stride,
+        'kpad':"VALID",
+        'ppad':"VALID"
+    },
+    4:{
+        'k':3, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':1, # conv stride
+        'ps':1, # pool stride,
+        'kpad':"VALID",
+        'ppad':"VALID"
+    },
+    5:{
+        'k':3, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':1, # conv stride
+        'ps':1, # pool stride,
+        'kpad':"SAME",
+        'ppad':"SAME"
+    },
+    6:{
+        'k':3, # conv window size (kxk)
+        'p':2, # pool window size (pxp)
+        'ks':1, # conv stride
+        'ps':1, # pool stride,
+        'kpad':"SAME",
+        'ppad':"SAME"
     }
 }
-def dim(dim, cp):
-    c = int( np.ceil(float(dim - cp['k'] + 1) / float(cp['ks']) ) )
-    return int( np.ceil(float(c - cp['p'] + 1) / float(cp['ps']) ) )
 
 d1 = dim(input_size,cp[1])
 d2 = dim(d1,cp[2])
+d3 = dim(d2,cp[3])
+d4 = dim(d3,cp[4])
+d5 = dim(d4,cp[5])
+d6 = dim(d4,cp[6])
+print(d1,d2,d3,d4,d5,d6)
 
-NUM_BATCHES = 300
 BATCH_SIZE = 300
-NUM_EPOCHS = 8 # not technically using epochs but im keeping it.
-learning_rate = 0.1
+NUM_EPOCHS = 30
+learning_rate = .1
 display_epoch = 1
 
 # regularization parameters
-l2_lambda = .01/( d1*d1*dim_layer[1] + d2*d2*dim_layer[2] + dim_layer[2]*dim_layer[3] )
+l2_lambda = .01/(sum([dim**2 for dim in dim_layer]))
+print(l2_lambda)
 drop_out = .9
 
 def main():
@@ -65,9 +102,14 @@ def main():
     def f(x):
         layer_1 = tf.nn.dropout( conv_layer(x, W[1], b[1], cp[1]), keep_prob )
         layer_2 = tf.nn.dropout( conv_layer(layer_1, W[2], b[2], cp[2]), keep_prob )
-        layer_3 = tf.nn.dropout( fc_layer(layer_2, W[3], b[3]), keep_prob )
+        layer_3 = tf.nn.dropout( conv_layer(layer_2, W[3], b[3], cp[3]), keep_prob )
+        layer_4 = tf.nn.dropout( conv_layer(layer_3, W[4], b[4], cp[4]), keep_prob )
+        layer_5 = tf.nn.dropout( conv_layer(layer_4, W[5], b[5], cp[5]), keep_prob )
+        layer_6 = tf.nn.dropout( conv_layer(layer_5, W[6], b[6], cp[6]), keep_prob )
+        layer_7 = tf.nn.dropout( fc_layer(layer_6, W[7], b[7]), keep_prob )
+        layer_8 = tf.nn.dropout( fc_layer(layer_7, W[8], b[8]), keep_prob )
         return tf.squeeze(
-            tf.add( tf.matmul(layer_3, W['out']), b['out'] )
+            tf.add( tf.matmul(layer_8, W['out']), b['out'] )
         )
 
     # Store layers weight & bias
@@ -76,14 +118,24 @@ def main():
     W = {
         1: tf.Variable(tf.random_normal( [cp[1]['k'],cp[1]['k'], num_channels, dim_layer[1]] )),
         2: tf.Variable(tf.random_normal( [cp[2]['k'],cp[2]['k'], dim_layer[1], dim_layer[2]] )),
-        3: tf.Variable(tf.random_normal( [d2*d2*dim_layer[2], dim_layer[3]] )),
-        'out': tf.Variable(tf.random_normal( [dim_layer[3], num_classes] ))
+        3: tf.Variable(tf.random_normal( [cp[3]['k'],cp[3]['k'], dim_layer[2], dim_layer[3]] )),
+        4: tf.Variable(tf.random_normal( [cp[4]['k'],cp[4]['k'], dim_layer[3], dim_layer[4]] )),
+        5: tf.Variable(tf.random_normal( [cp[5]['k'],cp[5]['k'], dim_layer[4], dim_layer[5]] )),
+        6: tf.Variable(tf.random_normal( [cp[6]['k'],cp[6]['k'], dim_layer[5], dim_layer[6]] )),
+        7: tf.Variable(tf.random_normal( [d6*d6*dim_layer[6], dim_layer[7]] )),
+        8: tf.Variable(tf.random_normal( [dim_layer[7], dim_layer[8]] )),
+        'out': tf.Variable(tf.random_normal( [dim_layer[8], num_classes] ))
     }
     # BIASES
     b = {
         1: tf.Variable(tf.random_normal([dim_layer[1]])),
         2: tf.Variable(tf.random_normal([dim_layer[2]])),
         3: tf.Variable(tf.random_normal([dim_layer[3]])),
+        4: tf.Variable(tf.random_normal([dim_layer[4]])),
+        5: tf.Variable(tf.random_normal([dim_layer[5]])),
+        6: tf.Variable(tf.random_normal([dim_layer[6]])),
+        7: tf.Variable(tf.random_normal([dim_layer[7]])),
+        8: tf.Variable(tf.random_normal([dim_layer[8]])),
         'out': tf.Variable(tf.random_normal([num_classes]))
     }
 
@@ -118,7 +170,8 @@ def main():
         # training
         for epoch in range(NUM_EPOCHS):
             avg_cost = 0.
-            num_batches = NUM_BATCHES
+            num_batches = int( np.ceil( data.index[-1] / BATCH_SIZE ) )
+
             for i in tqdm(range(num_batches)):
                 xb, yb = data.get_batch()
                 loss_np, _, summary = sess.run([loss, optim, merged_summary_op],
@@ -126,6 +179,7 @@ def main():
                 # logs every batch
                 summary_writer.add_summary(summary, epoch * num_batches + i)
                 avg_cost  += loss_np/num_batches
+
             # Display logs per epoch step
             if (epoch+1) % display_epoch == 0:
                 print("Epoch:", '%02d' % (epoch+1),
@@ -142,15 +196,15 @@ def main():
 # -------------- MODEL FUNCTIONS -----------------
 
 # convolution layer: conv-> +bias -> activation -> pool
-def conv_layer(x, W, b, cp, phase=True):
+def conv_layer(x, W, b, cp):
     x = tf.nn.conv2d(x, W, strides=[1, cp['ks'], cp['ks'], 1],
-        padding="VALID")
+        padding=cp['kpad'])
     x = tf.add(x,b)
     mean, var = tf.nn.moments(x, axes=[0,1,2])
     x = tf.nn.batch_normalization(x, mean, var, 0, 1, .001)
     x = tf.nn.relu6(x)
     return tf.nn.avg_pool(x, ksize = [1, cp['p'], cp['p'], 1],
-        strides = [1, cp['ps'], cp['ps'], 1], padding="VALID")
+        strides = [1, cp['ps'], cp['ps'], 1], padding=cp['ppad'])
 
 # fully connected layer
 def fc_layer(x, W, b):
@@ -158,53 +212,6 @@ def fc_layer(x, W, b):
     mean, var = tf.nn.moments(x, axes=[0])
     x = tf.nn.batch_normalization(x, mean, var, 0, 1, .001)
     return tf.nn.relu6(x)
-
-# -------------- DATA FUNCTIONS -----------------
-
-# from https://www.cs.toronto.edu/~kriz/cifar.html
-def unpickle(file):
-    with open(file, 'rb') as fo:
-        dict = pickle.load(fo, encoding='bytes')
-    return dict
-# from  https://stackoverflow.com/questions/38592324/one-hot-encoding-using-numpy/38592416
-def get_one_hot(targets, nb_classes):
-    res = np.eye(nb_classes)[np.array(targets).reshape(-1)]
-    return res.reshape(list(targets.shape)+[nb_classes])
-
-def mkImg(batch_row):
-    img = np.empty((32,32,3))
-    for chan in range(3):
-        for row in range(32):
-            c = 1024*chan
-            r = 32*row
-            img[row,:,chan] = batch_row[c+r:c+r+32]
-    return img / 255.0
-
-def mkImgs(batch_data):
-    N = batch_data.shape[0]
-    imgs = np.empty((N,32,32,3))
-    for row in range(N):
-        imgs[row,:,:,:] = mkImg(batch_data[row,:])
-    return imgs
-
-def loadData(data_folder):
-    x_train = np.empty((0,3072))
-    y_train = np.empty((0,10))
-    for fname in os.listdir(data_folder):
-        if fname.find("data") >= 0 :
-            train_batch = unpickle(data_folder+"/"+fname)
-            x_train = np.vstack( (x_train, train_batch[b'data']) )
-            y_train = np.vstack( (y_train,
-                get_one_hot(np.array(train_batch[b'labels']), num_classes))
-            )
-        if fname.find("test") >= 0:
-            test_batch = unpickle(data_folder+"/"+fname)
-            [x_val, x_test] = np.split(mkImgs(test_batch[b'data']), 2)
-            [y_val, y_test] = np.split(
-                get_one_hot(np.array(test_batch[b'labels']), num_classes), 2
-            )
-    x_train = mkImgs(x_train)
-    return ([x_train, x_val, x_test], [y_train, y_val, y_test])
 
 if __name__ == '__main__':
     main()
