@@ -60,10 +60,10 @@ def conv_layer(input, filters, kernel_size, pool_size=2, c_strides=1, \
         input, filters, kernel_size, strides=c_strides,
         kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=reg_scale)
     )
-    x = tf.layers.dropout(x, rate=dropout, training=is_training)
     x = tf.layers.batch_normalization(x, training=is_training, renorm=True)
     x = tf.nn.relu6(x)
-    x = tf.layers.max_pooling2d(x, pool_size, p_strides)
+    x = tf.layers.average_pooling2d(x, pool_size, p_strides)
+    x = tf.layers.dropout(x, rate=dropout, training=is_training)
     return x
 
 # --- FULLY CONNECTED LAYER WRAPPER ---
@@ -73,9 +73,9 @@ def fc_layer(input, units, is_training=False):
         input, units,
         kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=reg_scale),
     )
-    x = tf.layers.dropout(x, rate=dropout, training=is_training)
     x = tf.layers.batch_normalization(x, training=is_training, renorm=True)
     x = tf.nn.relu6(x)
+    x = tf.layers.dropout(x, rate=dropout, training=is_training)
     return x
 
 x = tf.placeholder(tf.float32, [None,28,28,1])
@@ -83,11 +83,11 @@ y = tf.placeholder(tf.float32, [None,10])
 phase = tf.placeholder(tf.bool) # is_training
 
 def f(x):
-    x = conv_layer(x, 16, 5, pool_size=2, c_strides=2, p_strides=2,
+    x = conv_layer(x, 4, 5, pool_size=2, c_strides=2, p_strides=2,
         is_training=phase
     )
     x = tf.layers.flatten(x)
-    x = fc_layer(x, 32, is_training=phase)
+    x = fc_layer(x, 16, is_training=phase)
     x = tf.layers.dense(x, num_classes)
     return x
 
@@ -104,7 +104,7 @@ with tf.control_dependencies(update_ops):
     loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) \
         + tf.losses.get_regularization_loss()
 
-optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+    optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 init = tf.global_variables_initializer()
 
 # Create a summary to monitor cost tensor

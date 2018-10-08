@@ -10,27 +10,27 @@ logs_path = "./tf_logs/"
 input_size = 32 # 32x32 imgs
 num_channels = 3 # RGB
 num_classes = 10
-dim_layer = [num_channels, 32, 32, 32, 32, 32, 32, 64, 64, num_classes]
+dim_layer = [num_channels, 8, 16, 8, 16, 8, 16, 32, 64, num_classes]
 cp = { # conv parameters
     1:{
-        'k':5, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
-        'ks':2, # conv stride
+        'k':3, # conv window size (kxk)
+        'p':3, # pool window size (pxp)
+        'ks':1, # conv stride
         'ps':1, # pool stride,
-        'kpad':"SAME",
-        'ppad':"SAME"
+        'kpad':"VALID",
+        'ppad':"VALID"
     },
     2:{
         'k':3, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
+        'p':3, # pool window size (pxp)
         'ks':1, # conv stride
-        'ps':2, # pool stride,
-        'kpad':"SAME",
-        'ppad':"SAME"
+        'ps':1, # pool stride,
+        'kpad':"VALID",
+        'ppad':"VALID"
     },
     3:{
         'k':3, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
+        'p':3, # pool window size (pxp)
         'ks':1, # conv stride
         'ps':1, # pool stride,
         'kpad':"VALID",
@@ -38,7 +38,7 @@ cp = { # conv parameters
     },
     4:{
         'k':3, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
+        'p':3, # pool window size (pxp)
         'ks':1, # conv stride
         'ps':1, # pool stride,
         'kpad':"VALID",
@@ -46,19 +46,19 @@ cp = { # conv parameters
     },
     5:{
         'k':3, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
+        'p':3, # pool window size (pxp)
         'ks':1, # conv stride
-        'ps':1, # pool stride,
-        'kpad':"SAME",
-        'ppad':"SAME"
+        'ps':2, # pool stride,
+        'kpad':"VALID",
+        'ppad':"VALID"
     },
     6:{
         'k':3, # conv window size (kxk)
-        'p':2, # pool window size (pxp)
+        'p':3, # pool window size (pxp)
         'ks':1, # conv stride
-        'ps':1, # pool stride,
-        'kpad':"SAME",
-        'ppad':"SAME"
+        'ps':2, # pool stride,
+        'kpad':"VALID",
+        'ppad':"VALID"
     }
 }
 
@@ -67,7 +67,7 @@ d2 = dim(d1,cp[2])
 d3 = dim(d2,cp[3])
 d4 = dim(d3,cp[4])
 d5 = dim(d4,cp[5])
-d6 = dim(d4,cp[6])
+d6 = dim(d5,cp[6])
 print(d1,d2,d3,d4,d5,d6)
 
 BATCH_SIZE = 300
