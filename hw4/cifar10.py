@@ -33,9 +33,9 @@ def dim(dim, cp):
 d1 = dim(input_size,cp[1])
 d2 = dim(d1,cp[2])
 
-NUM_BATCHES = 300
+# NUM_BATCHES = 300
 BATCH_SIZE = 300
-NUM_EPOCHS = 8 # not technically using epochs but im keeping it.
+NUM_EPOCHS = 8 
 learning_rate = 0.1
 display_epoch = 1
 
@@ -93,7 +93,7 @@ def main():
     correct_pred = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-    # binar cross entropy loss with L2 penalty on weights
+    # cross entropy loss with L2 penalty on weights
     loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) + \
         l2_lambda*tf.reduce_sum(
             [tf.nn.l2_loss(var) for var in
@@ -118,7 +118,7 @@ def main():
         # training
         for epoch in range(NUM_EPOCHS):
             avg_cost = 0.
-            num_batches = NUM_BATCHES
+            num_batches = ceil(data.index[-1]/BATCH_SIZE)
             for i in tqdm(range(num_batches)):
                 xb, yb = data.get_batch()
                 loss_np, _, summary = sess.run([loss, optim, merged_summary_op],
