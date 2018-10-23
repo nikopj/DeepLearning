@@ -13,15 +13,8 @@ def dim(dim, cp):
     return int( np.ceil(float(c - cp['p'] + 1) / float(cp['ps']) ) )
 
 # hyper-parameters
+input_dim = 28
 num_classes = 10
-dim_layer = {1:16, 2:32, 3:10}
-cp = { # conv parameters
-    'k':5, # conv window size (kxk)
-    'p':2, # pool window size (pxp)
-    'ks':2, # conv stride
-    'ps':2 # pool stride
-}
-d = dim(28,cp)
 NUM_BATCHES = 200
 BATCH_SIZE = 500
 NUM_EPOCHS = 8 # not technically using epochs but im keeping it.
@@ -29,8 +22,8 @@ learning_rate = 0.01
 display_epoch = 1
 
 # regularization parameters
-l2_lambda = .01/(d*d*dim_layer[1] + dim_layer[1]*dim_layer[2])
-drop_out = .9
+reg_scale = 0.01
+dropout = .1
 
 # https://stackoverflow.com/questions/38592324/one-hot-encoding-using-numpy/38592416
 def get_one_hot(targets, nb_classes):
@@ -59,46 +52,44 @@ class Data(object):
         choices = choice(self.index_train, size=BATCH_SIZE)
         return self.x_train[choices,:,:,:], self.y_train[choices,:]
 
-# convolution layer: conv-> +bias -> activation -> pool
-def conv_layer(x, W, b, cp):
-    x = tf.nn.conv2d(x, W, strides=[1, cp['ks'], cp['ks'], 1],
-        padding="VALID")
-    x = tf.add(x,b)
+# --- CONV LAYER WRAPPER --- w/ L2 regularization
+# conv -> dropout -> BN -> relu -> max_pool
+def conv_layer(input, filters, kernel_size, pool_size=2, c_strides=1, \
+    p_strides=1, is_training=False):
+    x = tf.layers.conv2d(
+        input, filters, kernel_size, strides=c_strides,
+        kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=reg_scale)
+    )
+    x = tf.layers.batch_normalization(x, training=is_training, renorm=True)
     x = tf.nn.relu6(x)
-    return tf.nn.avg_pool(x, ksize = [1, cp['p'], cp['p'], 1],
-        strides = [1, cp['ps'], cp['ps'], 1], padding="VALID")
+    x = tf.layers.average_pooling2d(x, pool_size, p_strides)
+    x = tf.layers.dropout(x, rate=dropout, training=is_training)
+    return x
 
-# fully connected layer
-def fc_layer(x, W, b):
-    x = tf.add( tf.matmul( tf.reshape(x, [-1, tf.shape(W)[0]]), W ), b)
-    return tf.nn.relu6(x)
+# --- FULLY CONNECTED LAYER WRAPPER ---
+# matmul -> dropout -> BN -> relu
+def fc_layer(input, units, is_training=False):
+    x = tf.layers.dense(
+        input, units,
+        kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=reg_scale),
+    )
+    x = tf.layers.batch_normalization(x, training=is_training, renorm=True)
+    x = tf.nn.relu6(x)
+    x = tf.layers.dropout(x, rate=dropout, training=is_training)
+    return x
 
 x = tf.placeholder(tf.float32, [None,28,28,1])
 y = tf.placeholder(tf.float32, [None,10])
-keep_prob = tf.placeholder(tf.float32) # for dropout
+phase = tf.placeholder(tf.bool) # is_training
 
-# f:R28x28 -> R10
 def f(x):
-    layer_1 = tf.nn.dropout( conv_layer(x, W[1], b[1], cp), keep_prob )
-    layer_2 = tf.nn.dropout( fc_layer(layer_1, W[2], b[2]), keep_prob )
-    return tf.squeeze(
-        tf.add( tf.matmul(layer_2, W['out']), b['out'] )
+    x = conv_layer(x, 4, 5, pool_size=2, c_strides=2, p_strides=2,
+        is_training=phase
     )
-
-# Store layers weight & bias
-# default dtype=float32
-# WEIGHTS
-W = {
-    1: tf.Variable(tf.random_normal([cp['k'],cp['k'],1,dim_layer[1]])),
-    2: tf.Variable(tf.random_normal([d*d*dim_layer[1],dim_layer[2]])),
-    'out': tf.Variable(tf.random_normal([dim_layer[2], num_classes]))
-}
-# BIASES
-b = {
-    1: tf.Variable(tf.random_normal([dim_layer[1]])),
-    2: tf.Variable(tf.random_normal([dim_layer[2]])),
-    'out': tf.Variable(tf.random_normal([num_classes]))
-}
+    x = tf.layers.flatten(x)
+    x = fc_layer(x, 16, is_training=phase)
+    x = tf.layers.dense(x, num_classes)
+    return x
 
 # models
 logits = f(x)
@@ -107,13 +98,13 @@ prediction = tf.nn.softmax(logits)
 correct_pred = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-# binar cross entropy loss with L2 penalty on weights
-loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) + \
-    l2_lambda*tf.reduce_sum(
-        [tf.nn.l2_loss(var) for var in
-        tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
-    )
-optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+# LOSS
+update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+with tf.control_dependencies(update_ops):
+    loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) \
+        + tf.losses.get_regularization_loss()
+
+    optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 init = tf.global_variables_initializer()
 
 # Create a summary to monitor cost tensor
@@ -136,7 +127,7 @@ with tf.Session() as sess:
         for i in tqdm(range(num_batches)):
             xb, yb = data.get_batch()
             loss_np, _, summary = sess.run([loss, optim, merged_summary_op],
-                feed_dict={x: xb, y: yb, keep_prob: drop_out})
+                feed_dict={x: xb, y: yb, phase: True})
             # logs every batch
             summary_writer.add_summary(summary, epoch * num_batches + i)
             avg_cost  += loss_np/num_batches
@@ -145,10 +136,10 @@ with tf.Session() as sess:
             print("Epoch:", '%02d' % (epoch+1),
                 "cost=", "{:.6f}".format(avg_cost))
         print('Validation Set Accuracy:',
-            accuracy.eval({x: data.x_val, y: data.y_val, keep_prob: 1.0}))
+            accuracy.eval({x: data.x_val, y: data.y_val, phase: False}))
 
     # Test the model on separate data
     print('Test Set Accuracy:',
-        accuracy.eval({x: data.x_test, y: data.y_test, keep_prob: 1.0}))
+        accuracy.eval({x: data.x_test, y: data.y_test, phase: False}))
 
     print("Run the command line:\n--> tensorboard --logdir=./tf_logs ")

@@ -1,0 +1,62 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings} % for formatting code
+\lstset
+{
+    language=Python,
+    basicstyle=\footnotesize\ttfamily,
+    numbers=left,
+    stepnumber=1,
+    showstringspaces=false,
+    tabsize=1,
+    breaklines=true,
+    breakatwhitespace=false,
+}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\author{Nikola Janju\v{s}evi\'{c}}
+\title{ECE471, Selected Topics in Machine Learning \\ Assignment 4}
+\date{September 11, 2018}
+
+\begin{document}
+\begin{large}
+ECE471, Selected Topics in Machine Learning -- Assignment 4 \\
+\end{large}
+cifar10 and cifar100 Classifiers \\
+Nikola Janju\v{s}evi\'{c} \\\\
+\today
+
+\section*{Remarks}
+I've put a lot of time into this project, sadly, to no avail. My best results are from one of my early adaptations of the MNIST assignment where my code is incredibly ugly and I'm fairly sure batch normalization is implemented incorrectly. \\\\
+One of the limiting factors in my explorations this week has honestly been my computing power. I just don't have time to run training with an insane number of parameters on my laptop. Starting next week I'll (somehow) be running my code on something more capable.
+
+\section*{Results}
+CIFAR10:
+\begin{itemize}
+	\item Top-1 Accuracy: 70\%
+\end{itemize}
+
+CIFAR100:
+\begin{itemize}
+	\item Top-1 Accuracy: 18\%
+	\item Top-5 Accuracy: 40\%
+\end{itemize}
+
+\pagebreak
+\section*{Program: \texttt{cifar10v2.py}}
+
+\lstinputlisting[language=Python]{../cifar10v2_old.py}
+
+\pagebreak
+\section*{Program: \texttt{cifar100.py}}
+
+\lstinputlisting[language=Python]{../cifar100.py}
+
+\end{document}
