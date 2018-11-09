@@ -1,0 +1,42 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage[margin=1in]{geometry}
+\usepackage{listings} % for formatting code
+\lstset
+{
+    language=Python,
+    basicstyle=\footnotesize\ttfamily,
+    numbers=left,
+    stepnumber=1,
+    showstringspaces=false,
+    tabsize=1,
+    breaklines=true,
+    breakatwhitespace=false,
+}
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\author{Nikola Janju\v{s}evi\'{c}}
+\title{ECE471, Selected Topics in Machine Learning \\ Assignment 5}
+
+\begin{document}
+\begin{large}
+ECE471, Selected Topics in Machine Learning -- Assignment 5 \\
+\end{large}
+AG News Dataset Classifier \\
+Nikola Janju\v{s}evi\'{c} \\
+\today
+
+\section*{Result}
+Test Set Accuracy: 90.32\%
+
+\section*{Program: }
+
+\lstinputlisting[language=Python]{../words.py}
+
+\end{document}

@@ -1,10 +1,14 @@
+import os
 import pandas
 import collections
 import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 
+# for tensorboard
 logs_path = "./tf_logs/"
+# disable tensorflow warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 num_classes = 4
 embedding_dim = 32
@@ -12,9 +16,9 @@ VOCAB_SIZE = 10000
 
 # hyper-parameters
 BATCH_SIZE = 128
-NUM_EPOCHS = 1
+NUM_EPOCHS = 2
 display_epoch = 1
-LEARNING_RATE = 1
+LEARNING_RATE = .01
 # regularization parameters
 drop_prob = 0.25
 reg_scale = 1e-6
@@ -45,7 +49,7 @@ def main():
             self.max_len = longest_str
 
         def get_batch(self):
-            choices = np.random.choice(self.y_train.shape[0], size=BATCH_SIZE)
+            choices = np.random.choice(self.train_size, size=BATCH_SIZE)
             return self.x_train[choices], self.y_train[choices,:]
 
     print("constructing dataset...")
@@ -58,11 +62,10 @@ def main():
         tf.random_uniform([VOCAB_SIZE, embedding_dim], -1.0, 1.0)
     )
     phase = tf.placeholder(tf.bool) # is_training
-    lr = tf.placeholder(tf.float32) # learning rate
+    lr = tf.placeholder(tf.float32) # learning rate [not used in this program]
 
     def f(x):
         x = tf.nn.embedding_lookup(embeddings, x)
-
         x = tf.layers.flatten(x)
         x = fc_layer(x, 8, is_training=phase)
         x = tf.layers.dense(x, num_classes)
@@ -80,7 +83,7 @@ def main():
     with tf.control_dependencies(update_ops):
         loss = tf.reduce_mean( tf.losses.softmax_cross_entropy(y, logits) ) \
             + tf.reduce_mean( tf.losses.get_regularization_loss() )
-        optim = tf.train.AdamOptimizer(learning_rate=.01).minimize(loss)
+        optim = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
 
     init = tf.global_variables_initializer()
 
@@ -102,9 +105,6 @@ def main():
             avg_cost = 0.
             num_batches = int( np.ceil( data.train_size / BATCH_SIZE ) )
 
-            if epoch in [2, 5]:
-                learning_rate = learning_rate/100
-
             for i in tqdm(range(num_batches)):
                 xb, yb = data.get_batch()
                 fd = {x: xb, y: yb, phase: True, lr: learning_rate}
@@ -125,11 +125,6 @@ def main():
         # Test the model on separate data
         print('Test Set Accuracy:',
             accuracy.eval({x: data.x_test, y: data.y_test, phase: False}))
-
-        print('Sentence: ',data.data_train[0:3])
-        print('Label: ', data.y_train[0:3])
-        print('Sentence Accuracy:',
-            accuracy.eval({x: data.x_train[0:3], y: data.y_train[0:3], phase: False}))
 
         print("Run the command line:\n--> tensorboard --logdir=./tf_logs ")
 
@@ -183,10 +178,7 @@ def get_data_csv(pathname):
     y = get_one_hot(np.array(df['label']) - 1, num_classes)[s,:]
     return x, y, all_words
 
-# df = pandas.read_csv('ag_news_csv/train.csv', index_col=False, \
-#     header=None, names=['label', 'headline', 'description'],
-#     quotechar='"', doublequote=True, lineterminator='\n')
-
+# makes dictionary mapping of words to unique integer id
 # http://adventuresinmachinelearning.com/word2vec-tutorial-tensorflow/
 def build_dataset(words, n_words):
     """Process raw inputs into a dataset."""
@@ -208,6 +200,9 @@ def build_dataset(words, n_words):
     reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     return dictionary, reversed_dictionary
 
+# codes any string into an array of integers corresponding to the mapping
+# provided by the dictionary. Pads / clips strings to max_len number of words
+# if provided.
 def code_data(data, dictionary, max_len=None):
     coded_data = []
     longest_str = 0
