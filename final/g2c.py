@@ -12,7 +12,7 @@ CONIC = 0
 ON    = 1
 CUBIC = 2
 
-face = ft.Face('./fonts/Georgia Bold.ttf')
+face = ft.Face('./fonts/KozMinPr6N-Regular.otf')
 face.set_char_size(48*64)
 face.load_char(sys.argv[1])
 outline = face.glyph.outline
@@ -108,12 +108,23 @@ for i in range(outline.n_contours):
 		nodes = points[:,(start,end)]
 		curves.append(nodes)
 
+for i in range(len(curves)):
+	while curves[i].shape[1]<4:
+		c = bezier.Curve.from_nodes(curves[i])
+		curves[i] = c.elevate().nodes
+
+np_glyph = np.empty((4,len(curves),2),dtype=np.float32)
+for i in range(len(curves)):
+	np_glyph[:,i,:] = curves[i].transpose()
+
+print(np_glyph,np_glyph.shape)
+
 ax = plt.subplot()
-for c in curves:
-	curve = bezier.Curve.from_nodes(c)
+for i in range(np_glyph.shape[1]):
+	curve = bezier.Curve.from_nodes(np_glyph[:,i,:].transpose())
 	_ = curve.plot(num_pts=256,ax=ax)
 	plt.draw()
-	plt.pause(0.0001)
+	plt.pause(0.1)
 
 for i,pt in enumerate(outline.points):
 	ax.annotate(i,pt)
