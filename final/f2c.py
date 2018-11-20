@@ -39,7 +39,7 @@ while end<len(tags):
 print('number of curves = %d'%len(curves))
 for i,t in enumerate(tags):
 	if t&(1<<0):
-		print('tags[%d]=%d=%s'%(i,t,bin(t)))
+		print('tags[%s]=%s=%s'%('{0:02d}'.format(i),'{0:02d}'.format(t),'{0:07b}'.format(t)))
 	
 ax = plt.subplot()
 for c in curves:
@@ -47,7 +47,5 @@ for c in curves:
 	_ = curve.plot(num_pts=256,ax=ax)
 for i,pt in enumerate(outline.points):
 	ax.annotate(i,pt)
-print('tags[33:37]',tags[33:37])
-print('tags[-4:]',tags[-4:])
 plt.show()
 
