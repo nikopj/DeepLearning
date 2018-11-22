@@ -7,12 +7,7 @@ import bezier
 import sys
 import string
 import glob
-
-# size of numpy array that stores glpyph bitmap
-IM_SHAPE = (32,32)
-# shape font file attempts to render glyph at
-# can often be a bit larger than hoped for, so make IM_SHAPE larger
-IM_RENDER = (32,32)
+import pickle
 
 chars = string.ascii_letters + string.digits
 
@@ -109,7 +104,7 @@ def outline2bez(outline):
 
 	# CONVERTING CURVE LIST TO 4xMx2 NUMPY ARRAY, 
 	# WHERE M IS THE NUMBER OF CURVES IN THE GLYPH
-	np_glyph = np.empty((4,len(curves),2),dtype=np.float32)
+	np_glyph = np.empty((4,len(curves),2),dtype=np.double)
 	for i in range(len(curves)):
 		# elevate all curvers to 3rd order (4 pts)
 		while curves[i].shape[1]<4:
@@ -130,7 +125,7 @@ def bits(x):
 
 # from freetype's glyph-monochrome.py
 # returns numpy array of glyph bitmap
-def bitmap2im(bitmap):
+def bitmap2im(bitmap,w,h):
 	width  = bitmap.width
 	rows   = bitmap.rows
 	pitch  = bitmap.pitch
@@ -142,11 +137,12 @@ def bitmap2im(bitmap):
 			row.extend(bits(bitmap.buffer[i*pitch+j]))
 		data.extend(row[:width])
 	Z = np.array(data).reshape(rows, width)
-	pad = np.array(IM_SHAPE)-np.array(Z.shape)
+	pad = np.array([w,h])-np.array(Z.shape)
+	pad[pad<0]=0
 	pad = ( ( int(np.floor(pad[0]/2)), int(np.ceil(pad[0]/2)) ) , 
 			( int(np.floor(pad[1]/2)), int(np.ceil(pad[1]/2)) ) )
-	Z = np.pad(Z,pad,'constant',constant_values=0)
-	return Z
+	return np.pad(Z,pad,'constant',constant_values=0)
+
 
 def plot_glyph(np_glyph,ax,animate=False,annotate=False,points=None):
 	for i in range(np_glyph.shape[1]):
@@ -159,32 +155,57 @@ def plot_glyph(np_glyph,ax,animate=False,annotate=False,points=None):
 		for i,pt in enumerate(points):
 			ax.annotate(i,pt)
 
+def face2bezimg(fn,w,h):
+	face = Face(fn)
+	face.set_char_size(48*64)
+	face.set_pixel_sizes(w,h)
+	face_glyphs = []
+	face_imgs = []
+	for char in chars:
+		face.load_char(char, FT_LOAD_RENDER | FT_LOAD_TARGET_MONO)
+		outline = face.glyph.outline
+		bitmap = face.glyph.bitmap
+		face_glyphs.append(outline2bez(outline))
+		bm = bitmap2im(bitmap,w,h)
+		face_imgs.append(bm)
+	return face_glyphs, face_imgs
 
-filenames = glob.glob('./fonts/*tf')
-i = np.random.randint(0,len(filenames))
-face = Face(filenames[i])
-face.set_char_size(48*64)
-face.set_pixel_sizes(IM_RENDER[0],IM_RENDER[1])
-face_glyphs = []
-face_imgs = []
-print(filenames[i])
-for char in chars:
-	print('... '+char)
-	face.load_char(char, FT_LOAD_RENDER | FT_LOAD_TARGET_MONO)
-	outline = face.glyph.outline
-	bitmap = face.glyph.bitmap
-
-	face_glyphs.append(outline2bez(outline))
+print('let\'s begin!')
+img_size = 128
+bez_dir = './bez'
+img_dir = './img'+str(img_size)
+filenames = glob.glob('./fonts/*')
+for fn in filenames:
+	print(fn)
 	try:
-		bm = bitmap2im(bitmap)
+		bez,imgs = face2bezimg(fn,img_size,img_size)
 	except:
-		print('font irregular, skipping')
-		sys.exit()
-	face_imgs.append(bm)
+		print(fn+' irregular, skipping')
+		continue
+	# save data
+	fn = fn.replace(' ','')
+	fn = os.path.basename(fn)
+	# outfile_bez = open(bez_dir+'/bez_'+fn,'wb')
+	outfile_img = open(img_dir+'/img'+str(img_size)+'_'+fn,'wb')
+	# pickle.dump(bez,outfile_bez)
+	pickle.dump(imgs,outfile_img)
+	# outfile_bez.close()
+	outfile_img.close()
+print('done!')
 
+i = np.random.randint(len(filenames))
+fn = filenames[i]
+fn = fn.replace(' ','')
+fn = os.path.basename(fn)
+infile_bez = open(bez_dir+'/bez_'+fn,'rb')
+infile_img = open(img_dir+'/img'+str(img_size)+'_'+fn,'rb')
+bez = pickle.load(infile_bez)
+img = pickle.load(infile_img)
+infile_bez.close()
+infile_img.close()
 
-i = np.random.randint(0,len(chars))
+j = np.random.randint(len(chars))
 fig, [ax1,ax2] = plt.subplots(1,2)
-plot_glyph(face_glyphs[i],ax1)
-ax2.imshow(face_imgs[i])
+plot_glyph(bez[j],ax1)
+ax2.imshow(img[j])
 plt.show()
